@@ -1,11 +1,11 @@
 # terraform-provider-bigip
-We wanted to start using terraform, but sadly there was no F5 BIGIP provider, so we wrote one.
+We wanted to start using [Terraform](https://terraform.io/), but sadly there was no [F5 BIGIP](https://devcentral.f5.com) provider available, so we started to write one that uses the [F5 iControlREST API](https://devcentral.f5.com/wiki/iControlREST.HomePage.ashx).
 
 ## Caveats
- * This was originally developed for some very specific needs, and F5 does a LOT of things that we didn't implemnt, so don't be terribly upset if it doesn't do what you want out-of-the-box
+ * This was originally developed for some very specific proof-of-concept needs, under extreme time duress. F5 does a LOT of things that we didn't implement, so don't be terribly upset if it doesn't do what you want out-of-the-box
  * The author of this module is self-absorbed and often on "too much scotch" (is that a real thing?), so expect plenty of "fun" comments along the way. We tried to cull out all the f-bombs, but please bare with us!
- * We only have 1 level of partition depth - so if that matters at all (and we honestly never checked), this could totally break in weird/awesome ways
- * Again, there are plenty of missing features, but we feel this is a decent start for an F5 provider. If you fix bugs or add new features, pull requests are always appreciated
+ * Our environment only has 1 level of partition depth - so if that matters at all (and we honestly never checked), this could totally break in weird/awesome ways
+ * Again, there are plenty of missing features, but we feel this is a decent start for an F5 provider. If you fix bugs or add new features, pull requests are always appreciated. We plan on making improvements as we need them, so check back often for updates.
 
 # Installation
 You can either build from source or install the binaries. Building from source is left as an exercise for the reader, but pre-built binaries for a platform or two should be available for download as well. 
@@ -16,12 +16,12 @@ You can either build from source or install the binaries. Building from source i
 
 ### Provisioner Configuration
 
-You currently need to use a provider config within your *.tf files. _Adding support to also accept environment variables would be a nice-to-have._
+You currently need to use a provider config within your *.tf files. _Adding support to also accept environment variables is a nice-to-have for us, but if you tackle it before we do, much kudos to you!_
 
     provider "bigip" {
         username = "your_RestAPI_username"
         password = "your_RestAPI_password"
-        management_ip = "your_F5_IP_or_hostname"
+        management_ip = "your_F5_IP_or_FQDN-hostname"
     }
 
 ### Create a Node
