@@ -3,7 +3,6 @@ We wanted to start using [Terraform](https://terraform.io/), but sadly there was
 
 ## Caveats
  * This was originally developed for some very specific proof-of-concept needs, under extreme time duress. F5 does a LOT of things that we didn't implement, so don't be terribly upset if it doesn't do what you want out-of-the-box
- * The author of this module is self-absorbed and often on "too much scotch" (is that a real thing?), so expect plenty of "fun" comments along the way. We tried to cull out all the f-bombs, but please bare with us!
  * Our environment only has 1 level of partition depth - so if that matters at all (and we honestly never checked), this could totally break in weird/awesome ways
  * Again, there are plenty of missing features, but we feel this is a decent start for an F5 provider. If you fix bugs or add new features, pull requests are always appreciated. We plan on making improvements as we need them, so check back often for updates.
 
