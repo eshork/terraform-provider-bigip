@@ -50,6 +50,11 @@ func resourceNode() *schema.Resource {
 				Optional: true,
 				Default: 0,
 			},
+			"ratio": &schema.Schema{
+				Type:     schema.TypeInt, // valid ranges are 1 through 65535
+				Optional: true,
+				Default: 1,
+			},
 		},
 	}
 }
@@ -67,6 +72,7 @@ func resourceNodeCreate(d *schema.ResourceData, m interface{}) error {
 	description := d.Get("description").(string)
 	connection_limit := d.Get("connection_limit")
 	connection_rate_limit := d.Get("connection_rate_limit")
+	ratio := d.Get("ratio")
 	destID := "~" + partition + "~" + name
 
 	json := simplejson.New()
@@ -76,6 +82,7 @@ func resourceNodeCreate(d *schema.ResourceData, m interface{}) error {
 	json.Set("description", description)
 	json.Set("connectionLimit", connection_limit)
 	json.Set("rateLimit", connection_rate_limit)
+	json.Set("ratio", ratio)
 
 	if !enabled {
 		// the default is to create in an enabled state, so we only do this if we want it created in disabled state
@@ -121,6 +128,7 @@ func resourceNodeRead(d *schema.ResourceData, m interface{}) error {
 	description := d.Get("description").(string)
 	connection_limit := strconv.Itoa( d.Get("connection_limit").(int) )
 	connection_rate_limit := strconv.Itoa( d.Get("connection_rate_limit").(int) )
+	ratio := strconv.Itoa( d.Get("ratio").(int) )
 	// destID := "~" + partition + "~" + name
 	destID := d.Id()
 
@@ -149,6 +157,7 @@ func resourceNodeRead(d *schema.ResourceData, m interface{}) error {
 	log.Println("[BIGIP] resourceNodeRead description : " + description)
 	log.Println("[BIGIP] resourceNodeRead connection_limit : " + connection_limit)
 	log.Println("[BIGIP] resourceNodeRead connection_rate_limit : " + connection_rate_limit)
+	log.Println("[BIGIP] resourceNodeRead ratio : " + ratio)
 	log.Println("[BIGIP] resourceNodeRead enabled : " + enabledStr)
 
 	/*
