@@ -7,7 +7,9 @@ We wanted to start using [Terraform](https://terraform.io/), but sadly there was
  * Again, there are plenty of missing features, but we feel this is a decent start for an F5 provider. If you fix bugs or add new features, pull requests are always appreciated. We plan on making improvements as we need them, so check back often for updates.
 
 # Installation
-You can either build from source or install the binaries. Building from source is left as an exercise for the reader, but pre-built binaries for a platform or two should be available for download as well. 
+You can either build from source or install the binaries. Building from source is left as an exercise for the reader ([start here](https://golang.org/)), but pre-built binaries for a platform or two should be available for download as well. Most of us here use Mac or Linux, so you can probably find binaries for those platforms on most releases.
+
+The easiest binary installation is to just drop the *terraform-provider-bigip* file for your platform into the same directory as the rest of your terraform installation, which if you have terraform already installed, is typically already in your PATH and should be discoverable by terraform. If you run into plugin discovery issues, the [terraform docs](https://terraform.io/docs/index.html) are probably the best place to start looking.
 
 --
 
