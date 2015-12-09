@@ -31,6 +31,44 @@ func resourcePool() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"balancing_method": &schema.Schema{
+				Type:     schema.TypeString,
+				// options are: 
+				//   round_robin
+				//   ratio_member
+				//   least_connections_member
+				//   observed_member
+				//   predictive_member
+				//   ratio_node
+				//   least_connections_node
+				//   fastest_node
+				//   observed_node
+				//   predictive_node
+				//   dynamic_ratio_node
+				//   fastest_application
+				//   least_sessions
+				//   dynamic_ratio_member
+				//   weighted_least_connections_member
+				//   weighted_least_connections_node
+				//   ratio_session
+				//   ratio_least_connections_member
+				//   ratio_least_connections_node
+				Optional: true,
+				Default: "round_robin",
+				// REST param is "loadBalancingMode"
+			},
+			"ignore_persisted_weight": &schema.Schema{
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default: false,
+				//  According to the F5 gui, this is only used by these balancing_method's:
+				//   ratio_member
+				//   observed_member
+				//   predictive_member
+				//   ratio_node
+				//   observed_node
+				//   predictive_node
+			},
 
 			// "address": &schema.Schema{
 			// 	Type:     schema.TypeString,
@@ -65,16 +103,19 @@ func resourcePoolCreate(d *schema.ResourceData, m interface{}) error {
 	name := d.Get("name").(string)
 	partition := d.Get("partition").(string)
 	description := d.Get("description").(string)
+	balancing_method := d.Get("balancing_method").(string)
 	destID := "~" + partition + "~" + name
 
 	log.Println("[BIGIP] resourcePoolCreate name : " + name)
 	log.Println("[BIGIP] resourcePoolCreate partition : " + partition)
 	log.Println("[BIGIP] resourcePoolCreate description : " + description)
+	log.Println("[BIGIP] resourcePoolCreate balancing_method : " + balancing_method)
 
 	json := simplejson.New()
 	json.Set("name", name)
 	json.Set("partition", partition)
 	json.Set("description", description)
+	json.Set("loadBalancingMode", xlate_toPoolBalanceMode(balancing_method))
 
 	jsonPostString := JSONtoString(json)
 	jsonPostString = "{" + jsonPostString + "}"
@@ -104,6 +145,12 @@ func resourcePoolRead(d *schema.ResourceData, m interface{}) error {
 	name := d.Get("name").(string)
 	partition := d.Get("partition").(string)
 	description := d.Get("description").(string)
+	balancing_method := d.Get("balancing_method").(string)
+	ignore_persisted_weight := d.Get("ignore_persisted_weight").(bool)
+	ignore_persisted_weight_str := "true"
+	if !ignore_persisted_weight {
+		ignore_persisted_weight_str = "false"
+	}
 	destID := d.Id()
 
 	restURL = restURL + "/" + destID
@@ -112,7 +159,8 @@ func resourcePoolRead(d *schema.ResourceData, m interface{}) error {
 	log.Println("[BIGIP] resourcePoolRead name : " + name)
 	log.Println("[BIGIP] resourcePoolRead partition : " + partition)
 	log.Println("[BIGIP] resourcePoolRead description : " + description)
-
+	log.Println("[BIGIP] resourcePoolRead balancing_method : " + balancing_method)
+	log.Println("[BIGIP] resourcePoolRead ignore_persisted_weight : " + ignore_persisted_weight_str)
 
 	myJson, f5err := F5Get(restURL, *client)
 	if f5err != nil {
@@ -167,6 +215,8 @@ func resourcePoolRead(d *schema.ResourceData, m interface{}) error {
 	resGeneration := myJson.Get("generation").MustString("")
 	resSelfLink := myJson.Get("selfLink").MustString("")
 	resDescription := myJson.Get("description").MustString("")
+	resBalancingMethod := myJson.Get("loadBalancingMode").MustString("")
+	resIgnorePersistedWeight := myJson.Get("ignorePersistedWeight").MustString("")
 
 	log.Println("[BIGIP] resourcePoolRead resKind : " + resKind)
 	log.Println("[BIGIP] resourcePoolRead resName : " + resName)
@@ -175,8 +225,17 @@ func resourcePoolRead(d *schema.ResourceData, m interface{}) error {
 	log.Println("[BIGIP] resourcePoolRead resGeneration : " + resGeneration)
 	log.Println("[BIGIP] resourcePoolRead resSelfLink : " + resSelfLink)
 	log.Println("[BIGIP] resourcePoolRead resDescription : " + resDescription)
+	log.Println("[BIGIP] resourcePoolRead resBalancingMethod : " + resBalancingMethod)
+	log.Println("[BIGIP] resourcePoolRead resIgnorePersistedWeight : " + resIgnorePersistedWeight)
 
 	d.Set("description",resDescription)
+	d.Set("balancing_method", xlate_fromPoolBalanceMode(resBalancingMethod))
+
+	if resIgnorePersistedWeight == "enabled" {
+		d.Set("ignore_persisted_weight", true)
+	} else {
+		d.Set("ignore_persisted_weight", false)
+	}
 
 	return nil
 }
@@ -199,11 +258,23 @@ func resourcePoolUpdate(d *schema.ResourceData, m interface{}) error {
 		log.Println("[BIGIP] resourcePoolUpdate : name CHANGED")
 		json.Set("name", d.Get("name"))
 		// THIS WILL NOT WORK - IS READ-ONLY IN WEB UI - NEEDS DESTROY/CREATE TO PERFORM
-		needsFullReCreate = true
+		needsFullReCreate = true // and this makes DESTROY/CREATE a reality!
 	}
 	if d.HasChange("description") {
 		log.Println("[BIGIP] resourcePoolUpdate : description CHANGED")
 		json.Set("description", d.Get("description"))
+	}
+	if d.HasChange("balancing_method") {
+		log.Println("[BIGIP] resourcePoolUpdate : balancing_method CHANGED")
+		json.Set("loadBalancingMode", xlate_toPoolBalanceMode(d.Get("balancing_method").(string)))
+	}
+	if d.HasChange("ignore_persisted_weight") {
+		log.Println("[BIGIP] resourcePoolUpdate : ignore_persisted_weight CHANGED")
+		if d.Get("ignore_persisted_weight").(bool) {
+			json.Set("ignorePersistedWeight", "enabled")
+		} else {
+			json.Set("ignorePersistedWeight", "disabled")
+		}
 	}
 
 	jsonPostString := JSONtoString(json)
@@ -267,9 +338,57 @@ func resourcePoolDelete(d *schema.ResourceData, m interface{}) error {
 	d.SetId("")
 	return nil
 
-	return errors.New("NYI")
+	return errors.New("NYI") // yep, we never hit this anymore, but Go has pedantic imports, so... #reasons
 }
 
+// do we really need to define brand new (and only slightly different) setting strings here? nope; but we did, so live with it -- at least we did it with a map[string]string
+var resourcePoolBalanceModeMap map[string]string = map[string]string{
+	// terraform : F5REST
+	"round_robin" : "round-robin",
+	"ratio_member" : "ratio-member",
+	"least_connections_member" : "least-connections-member",
+	"observed_member" : "observed-member",
+	"predictive_member" : "predictive-member",
+	"ratio_node" : "ratio-node",
+	"least_connections_node" : "least-connections-node",
+	"fastest_node" : "fastest-node",
+	"observed_node" : "observed-node",
+	"predictive_node" : "predictive-node",
+	"dynamic_ratio_node" : "dynamic-ratio-node",
+	"fastest_application" : "fastest-app-response",
+	"least_sessions" : "least-sessions",
+	"dynamic_ratio_member" : "dynamic-ratio-member",
+	"weighted_least_connections_member" : "weighted-least-connections-member",
+	"weighted_least_connections_node" : "weighted-least-connections-node",
+	"ratio_session" : "ratio-session",
+	"ratio_least_connections_member" : "ratio-least-connections-member",
+	"ratio_least_connections_node" : "ratio-least-connections-node",
+}
 
+// pass in the user-provided balancing_method string, and get back the F5-expected value for RESTAPI calls
+func xlate_toPoolBalanceMode(userMode string) string {
+	if val, ok := resourcePoolBalanceModeMap[userMode]; ok {
+		//if we have the index, return the value
+		return val
+	}
+	// well that didn't work as we planned, so: ROUND ROBIN!
+	log.Println("[BIGIP] xlate_toPoolBalanceMode FAILED! defaulting to round-robin! : ")
+	return "round-robin"
+}
 
+// pass in the F5 RESTAPI balancing_method string, and get back the user-expected value
+func xlate_fromPoolBalanceMode(userMode string) string {
+	//reverse the map and do a lookup
+	reversed_resourcePoolBalanceModeMap := make(map[string]string)
+	for k, v := range resourcePoolBalanceModeMap{
+		reversed_resourcePoolBalanceModeMap[v] = k
+	}
+	if val, ok := reversed_resourcePoolBalanceModeMap[userMode]; ok {
+		//if we have the index, return the value
+		return val
+	}
 
+	// well that didn't work as we planned, so: ROUND ROBIN!
+	log.Println("[BIGIP] xlate_fromPoolBalanceMode FAILED! defaulting to round_robin! : ")
+	return "round_robin"
+}
