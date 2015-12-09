@@ -37,7 +37,7 @@ You currently need to use a provider config within your *.tf files. _Adding supp
 
 
 
-### Create a Resource Pool
+### Create a Pool
 
     resource "bigip_pool" "myWebHostPool" {
     	name = "myWebHostPool"
@@ -48,7 +48,7 @@ You currently need to use a provider config within your *.tf files. _Adding supp
 
 
 
-### Create a Resource Pool Member
+### Create a Pool Member
 This resource element could use some work. Due to time contraints on the original coding, we had to make some dirty design decisions to get the provider up and working as quickly as possible. For now, it's typically best to just use terraform variables to ensure object dependencies and information are disseminated appropriately.
 
     resource "bigip_pool_member" "myWebHostPool-member" {
