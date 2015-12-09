@@ -57,6 +57,18 @@ func resourcePool() *schema.Resource {
 				Default: "round_robin",
 				// REST param is "loadBalancingMode"
 			},
+			"ignore_persisted_weight": &schema.Schema{
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default: false,
+				//  According to the F5 gui, this is only used by these balancing_method's:
+				//   ratio_member
+				//   observed_member
+				//   predictive_member
+				//   ratio_node
+				//   observed_node
+				//   predictive_node
+			},
 
 			// "address": &schema.Schema{
 			// 	Type:     schema.TypeString,
@@ -134,6 +146,11 @@ func resourcePoolRead(d *schema.ResourceData, m interface{}) error {
 	partition := d.Get("partition").(string)
 	description := d.Get("description").(string)
 	balancing_method := d.Get("balancing_method").(string)
+	ignore_persisted_weight := d.Get("ignore_persisted_weight").(bool)
+	ignore_persisted_weight_str := "true"
+	if !ignore_persisted_weight {
+		ignore_persisted_weight_str = "false"
+	}
 	destID := d.Id()
 
 	restURL = restURL + "/" + destID
@@ -143,6 +160,7 @@ func resourcePoolRead(d *schema.ResourceData, m interface{}) error {
 	log.Println("[BIGIP] resourcePoolRead partition : " + partition)
 	log.Println("[BIGIP] resourcePoolRead description : " + description)
 	log.Println("[BIGIP] resourcePoolRead balancing_method : " + balancing_method)
+	log.Println("[BIGIP] resourcePoolRead ignore_persisted_weight : " + ignore_persisted_weight_str)
 
 	myJson, f5err := F5Get(restURL, *client)
 	if f5err != nil {
@@ -198,6 +216,7 @@ func resourcePoolRead(d *schema.ResourceData, m interface{}) error {
 	resSelfLink := myJson.Get("selfLink").MustString("")
 	resDescription := myJson.Get("description").MustString("")
 	resBalancingMethod := myJson.Get("loadBalancingMode").MustString("")
+	resIgnorePersistedWeight := myJson.Get("ignorePersistedWeight").MustString("")
 
 	log.Println("[BIGIP] resourcePoolRead resKind : " + resKind)
 	log.Println("[BIGIP] resourcePoolRead resName : " + resName)
@@ -207,9 +226,16 @@ func resourcePoolRead(d *schema.ResourceData, m interface{}) error {
 	log.Println("[BIGIP] resourcePoolRead resSelfLink : " + resSelfLink)
 	log.Println("[BIGIP] resourcePoolRead resDescription : " + resDescription)
 	log.Println("[BIGIP] resourcePoolRead resBalancingMethod : " + resBalancingMethod)
+	log.Println("[BIGIP] resourcePoolRead resIgnorePersistedWeight : " + resIgnorePersistedWeight)
 
 	d.Set("description",resDescription)
 	d.Set("balancing_method", xlate_fromPoolBalanceMode(resBalancingMethod))
+
+	if resIgnorePersistedWeight == "enabled" {
+		d.Set("ignore_persisted_weight", true)
+	} else {
+		d.Set("ignore_persisted_weight", false)
+	}
 
 	return nil
 }
@@ -241,6 +267,14 @@ func resourcePoolUpdate(d *schema.ResourceData, m interface{}) error {
 	if d.HasChange("balancing_method") {
 		log.Println("[BIGIP] resourcePoolUpdate : balancing_method CHANGED")
 		json.Set("loadBalancingMode", xlate_toPoolBalanceMode(d.Get("balancing_method").(string)))
+	}
+	if d.HasChange("ignore_persisted_weight") {
+		log.Println("[BIGIP] resourcePoolUpdate : ignore_persisted_weight CHANGED")
+		if d.Get("ignore_persisted_weight").(bool) {
+			json.Set("ignorePersistedWeight", "enabled")
+		} else {
+			json.Set("ignorePersistedWeight", "disabled")
+		}
 	}
 
 	jsonPostString := JSONtoString(json)
